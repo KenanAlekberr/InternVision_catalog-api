@@ -7,8 +7,6 @@ import com.example.catalogapi.entity.CategoryEntity;
 import com.example.catalogapi.entity.ProductEntity;
 import io.micrometer.common.util.StringUtils;
 
-import static com.example.catalogapi.enums.AvailabilityStatus.IN_STOCK;
-
 public enum ProductMapper {
     PRODUCT_MAPPER;
 
@@ -18,7 +16,6 @@ public enum ProductMapper {
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .productCount(request.getProductCount())
-                .availability(IN_STOCK)
                 .category(category)
                 .build();
     }
@@ -50,9 +47,6 @@ public enum ProductMapper {
 
         if (request.getProductCount() != null)
             entity.setProductCount(request.getProductCount());
-
-        if (request.getAvailability() != null)
-            entity.setAvailability(request.getAvailability());
 
         if (category != null)
             entity.setCategory(category);

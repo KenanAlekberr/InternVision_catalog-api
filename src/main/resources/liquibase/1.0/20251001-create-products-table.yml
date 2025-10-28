@@ -35,7 +35,7 @@ databaseChangeLog:
                   name: availability
                   type: VARCHAR(20)
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: category_id
                   type: BIGINT

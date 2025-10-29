@@ -112,19 +112,48 @@ public class ProductServiceImpl implements ProductService {
 //    }
 
 
+//    @Override
+//    public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId) {
+//        String cacheKey = String.format(PRODUCT_LIST_KEY_PATTERN,
+//                page, size, categoryId != null ? ":category=" + categoryId : "");
+//
+//        List<ProductResponse> cachedList = cache.get(cacheKey, List.class);
+//
+//        if (cachedList != null && !cachedList.isEmpty()) {
+//            int start = Math.min(page * size, cachedList.size());
+//            int end = Math.min(start + size, cachedList.size());
+//            List<ProductResponse> pagedList = cachedList.subList(start, end);
+//            return new PageImpl<>(pagedList, PageRequest.of(page, size), cachedList.size());
+//        }
+//
+//        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+//        Page<ProductEntity> productPage;
+//
+//        if (categoryId != null) productPage = productRepository.findByCategoryId(categoryId, pageable);
+//        else productPage = productRepository.findAll(pageable);
+//
+//        List<ProductResponse> responseList = productPage.stream().map(product -> {
+//            ProductResponse response = PRODUCT_MAPPER.toResponse(product);
+//            response.setAvailability(determineAvailability(product.getProductCount()));
+//            return response;
+//        }).toList();
+//
+//        cache.set(cacheKey, responseList, 5, MINUTES);
+//
+//        int start = Math.min(page * size, responseList.size());
+//        int end = Math.min(start + size, responseList.size());
+//        List<ProductResponse> pagedList = responseList.subList(start, end);
+//
+//        return new PageImpl<>(pagedList, PageRequest.of(page, size), responseList.size());
+//    }
     @Override
     public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId) {
         String cacheKey = String.format(PRODUCT_LIST_KEY_PATTERN,
                 page, size, categoryId != null ? ":category=" + categoryId : "");
 
-        List<ProductResponse> cachedList = cache.get(cacheKey, List.class);
+        Page<ProductResponse> cachedPage = cache.get(cacheKey, PageImpl.class);
 
-        if (cachedList != null) {
-            int start = Math.min(page * size, cachedList.size());
-            int end = Math.min(start + size, cachedList.size());
-            List<ProductResponse> pagedList = cachedList.subList(start, end);
-            return new PageImpl<>(pagedList, PageRequest.of(page, size), cachedList.size());
-        }
+        if (cachedPage != null && !cachedPage.isEmpty()) return cachedPage;
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<ProductEntity> productPage;
@@ -132,20 +161,18 @@ public class ProductServiceImpl implements ProductService {
         if (categoryId != null) productPage = productRepository.findByCategoryId(categoryId, pageable);
         else productPage = productRepository.findAll(pageable);
 
-        List<ProductResponse> responseList = productPage.stream().map(product -> {
-            ProductResponse response = PRODUCT_MAPPER.toResponse(product);
-            response.setAvailability(determineAvailability(product.getProductCount()));
-            return response;
-        }).toList();
+        List<ProductResponse> responseList = productPage.getContent().stream()
+                .map(product -> {
+                    ProductResponse response = PRODUCT_MAPPER.toResponse(product);
+                    response.setAvailability(determineAvailability(product.getProductCount()));
+                    return response;
+                }).toList();
 
-        cache.set(cacheKey, responseList, 5, MINUTES);
+        Page<ProductResponse> responsePage = new PageImpl<>(responseList, pageable, productPage.getTotalElements());
 
-        // Edit
-        int start = Math.min(page * size, responseList.size());
-        int end = Math.min(start + size, responseList.size());
-        List<ProductResponse> pagedList = responseList.subList(start, end);
+        cache.set(cacheKey, responsePage, 5, MINUTES);
 
-        return new PageImpl<>(pagedList, PageRequest.of(page, size), responseList.size());
+        return responsePage;
     }
 
 

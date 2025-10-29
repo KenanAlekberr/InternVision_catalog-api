@@ -9,6 +9,7 @@ import com.example.catalogapi.enums.AvailabilityStatus;
 import com.example.catalogapi.exception.custom.NotFoundException;
 import com.example.catalogapi.repository.CategoryRepository;
 import com.example.catalogapi.repository.ProductRepository;
+import com.example.catalogapi.repository.specification.ProductSpecification;
 import com.example.catalogapi.service.abstraction.ProductService;
 import com.example.catalogapi.util.CacheUtilWithRedisson;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.example.catalogapi.constant.AppConstants.ALL_PRODUCTS;
@@ -79,51 +81,14 @@ public class ProductServiceImpl implements ProductService {
 
 //    @Override
 //    public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId) {
-//        String cacheKey = String.format(PRODUCT_LIST_KEY_PATTERN, page, size,
-//                categoryId != null ? ":category=" + categoryId : "");
-//
-//        List<ProductResponse> cachedList = cache.get(cacheKey, List.class);
-//
-//        if (cachedList != null) {
-//            int start = Math.min(page * size, cachedList.size());
-//            int end = Math.min(start + size, cachedList.size());
-//            List<ProductResponse> pagedList = cachedList.subList(start, end);
-//            return new PageImpl<>(pagedList, PageRequest.of(page, size), cachedList.size());
-//        }
-//
-
-    /// /        if (cachedPage != null) return cachedPage;
-//
-//        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
-//        Page<ProductEntity> productPage;
-//
-//        if (categoryId != null) productPage = productRepository.findByCategoryId(categoryId, pageable);
-//        else productPage = productRepository.findAll(pageable);
-//
-//        Page<ProductResponse> responsePage = productPage.map(product -> {
-//            ProductResponse response = PRODUCT_MAPPER.toResponse(product);
-//            response.setAvailability(determineAvailability(product.getProductCount()));
-//            return response;
-//        });
-//
-//        cache.set(cacheKey, responsePage, 5, MINUTES);
-//
-//        return responsePage;
-//    }
-
-
-//    @Override
-//    public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId) {
 //        String cacheKey = String.format(PRODUCT_LIST_KEY_PATTERN,
 //                page, size, categoryId != null ? ":category=" + categoryId : "");
 //
 //        List<ProductResponse> cachedList = cache.get(cacheKey, List.class);
 //
 //        if (cachedList != null && !cachedList.isEmpty()) {
-//            int start = Math.min(page * size, cachedList.size());
-//            int end = Math.min(start + size, cachedList.size());
-//            List<ProductResponse> pagedList = cachedList.subList(start, end);
-//            return new PageImpl<>(pagedList, PageRequest.of(page, size), cachedList.size());
+//            Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+//            return new PageImpl<>(cachedList, pageable, cachedList.size());
 //        }
 //
 //        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
@@ -132,34 +97,40 @@ public class ProductServiceImpl implements ProductService {
 //        if (categoryId != null) productPage = productRepository.findByCategoryId(categoryId, pageable);
 //        else productPage = productRepository.findAll(pageable);
 //
-//        List<ProductResponse> responseList = productPage.stream().map(product -> {
-//            ProductResponse response = PRODUCT_MAPPER.toResponse(product);
-//            response.setAvailability(determineAvailability(product.getProductCount()));
-//            return response;
-//        }).toList();
+//        List<ProductResponse> responseList = productPage.getContent().stream()
+//                .map(product -> {
+//                    ProductResponse response = PRODUCT_MAPPER.toResponse(product);
+//                    response.setAvailability(determineAvailability(product.getProductCount()));
+//                    return response;
+//                })
+//                .toList();
 //
 //        cache.set(cacheKey, responseList, 5, MINUTES);
 //
-//        int start = Math.min(page * size, responseList.size());
-//        int end = Math.min(start + size, responseList.size());
-//        List<ProductResponse> pagedList = responseList.subList(start, end);
-//
-//        return new PageImpl<>(pagedList, PageRequest.of(page, size), responseList.size());
+//        return new PageImpl<>(responseList, pageable, productPage.getTotalElements());
 //    }
+
     @Override
-    public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId) {
+    public Page<ProductResponse> getAllProducts(int page, int size, Long categoryId, String name,
+                                                BigDecimal minPrice, BigDecimal maxPrice) {
         String cacheKey = String.format(PRODUCT_LIST_KEY_PATTERN,
-                page, size, categoryId != null ? ":category=" + categoryId : "");
+                page, size,
+                (categoryId != null ? ":category=" + categoryId : "") +
+                        (name != null ? ":name=" + name : "") +
+                        (minPrice != null ? ":minPrice=" + minPrice : "") +
+                        (maxPrice != null ? ":maxPrice=" + maxPrice : ""));
 
-        Page<ProductResponse> cachedPage = cache.get(cacheKey, PageImpl.class);
+        List<ProductResponse> cachedList = cache.get(cacheKey, List.class);
 
-        if (cachedPage != null && !cachedPage.isEmpty()) return cachedPage;
+        if (cachedList != null && !cachedList.isEmpty()) {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+            return new PageImpl<>(cachedList, pageable, cachedList.size());
+        }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<ProductEntity> productPage;
+        var spec = ProductSpecification.filterBy(categoryId, name, minPrice, maxPrice);
 
-        if (categoryId != null) productPage = productRepository.findByCategoryId(categoryId, pageable);
-        else productPage = productRepository.findAll(pageable);
+        Page<ProductEntity> productPage = productRepository.findAll(spec, pageable);
 
         List<ProductResponse> responseList = productPage.getContent().stream()
                 .map(product -> {
@@ -168,13 +139,10 @@ public class ProductServiceImpl implements ProductService {
                     return response;
                 }).toList();
 
-        Page<ProductResponse> responsePage = new PageImpl<>(responseList, pageable, productPage.getTotalElements());
+        cache.set(cacheKey, responseList, 5, MINUTES);
 
-        cache.set(cacheKey, responsePage, 5, MINUTES);
-
-        return responsePage;
+        return new PageImpl<>(responseList, pageable, productPage.getTotalElements());
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -182,8 +150,7 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity product = fetchProductIfExist(id);
         CategoryEntity category = null;
 
-        if (request.getCategoryId() != null)
-            category = fetchCategoryIfExist(request.getCategoryId());
+        if (request.getCategoryId() != null) category = fetchCategoryIfExist(request.getCategoryId());
 
         PRODUCT_MAPPER.updateEntity(product, request, category);
         productRepository.save(product);
@@ -191,7 +158,9 @@ public class ProductServiceImpl implements ProductService {
         ProductResponse response = PRODUCT_MAPPER.toResponse(product);
 
         String key = PRODUCT_KEY_PREFIX + id;
+
         cache.set(key, response, 5, MINUTES);
+        cache.deleteByPattern(ALL_PRODUCTS);
 
         return response;
     }
@@ -199,8 +168,11 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(Long id) {
         ProductEntity product = fetchProductIfExist(id);
+
         productRepository.delete(product);
+
         cache.delete(PRODUCT_KEY_PREFIX + id);
+        cache.deleteByPattern(ALL_PRODUCTS);
     }
 
     private ProductEntity fetchProductIfExist(Long id) {

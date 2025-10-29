@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static lombok.AccessLevel.PRIVATE;
@@ -49,8 +50,11 @@ public class ProductController {
     @ResponseStatus(OK)
     public List<ProductResponse> getAllProducts(@RequestParam(defaultValue = "0") int page,
                                                 @RequestParam(defaultValue = "10") int size,
-                                                @RequestParam(required = false) Long categoryId) {
-        Page<ProductResponse> pageResult = productService.getAllProducts(page, size, categoryId);
+                                                @RequestParam(required = false) Long categoryId,
+                                                @RequestParam(required = false) String name,
+                                                @RequestParam(required = false) BigDecimal minPrice,
+                                                @RequestParam(required = false) BigDecimal maxPrice) {
+        Page<ProductResponse> pageResult = productService.getAllProducts(page, size, categoryId, name, minPrice, maxPrice);
         return pageResult.getContent();
     }
 

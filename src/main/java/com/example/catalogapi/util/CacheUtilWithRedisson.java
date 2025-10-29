@@ -19,14 +19,6 @@ public final class CacheUtilWithRedisson {
     RedissonClient redissonClient;
     ObjectMapper mapper;
 
-    public boolean exists(String key) {
-        try {
-            return redissonClient.getBucket(key).isExists();
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     @SneakyThrows
     public <T> void set(String key, T data, int timeToLive, TimeUnit timeUnit) {
         RBucket<Object> bucket = redissonClient.getBucket(key);

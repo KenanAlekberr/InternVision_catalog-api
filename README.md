@@ -1,7 +1,11 @@
 # catalog-api-0.0.1-SNAPSHOT.jar
+
 ___
+
 # 🛍️ Product Catalog API
+
 ___
+
 # 📘 About the Project
 
 Product Catalog API is a RESTful service for managing products and categories.
@@ -12,16 +16,19 @@ ___
 # 🧩 Core Features
 
 # 🔹 Categories
-
 - Full CRUD operations
 - Filtering products by category
 
 # 🔹 Products
-
 - Full CRUD operations
-- Pagination and filtering (by categoryId, availability)
+- Pagination and filtering
+    - By categoryId
+    - By name
+    - By price range (minPrice / maxPrice)
+- Filtering implemented via Spring Data JPA Specifications for flexible, dynamic queries
 - Redis caching for frequently accessed endpoints
 - Validation and centralized error handling
+
 ___
 
 # 🧠 Database Model
@@ -29,25 +36,27 @@ ___
 **Entities**:
 
 - CategoryEntity
-     - id
-     - name
-     - description
-     - createdAt / updatedAt
+    - id
+    - name
+    - description
+    - createdAt / updatedAt
 
 - ProductEntity
-     - id
-     - name
-     - description
-     - price
-     - productCount
-     - availability (Enum: IN_STOCK / LOW_STOCK / OUT_OF_STOCK)
-     - category (ManyToOne relationship with CategoryEntity)
-     - createdAt / updatedAt
+    - id
+    - name
+    - description
+    - price
+    - productCount
+    - availability (Enum: IN_STOCK / LOW_STOCK / OUT_OF_STOCK)
+    - category (ManyToOne relationship with CategoryEntity)
+    - createdAt / updatedAt
+
 ___
 
 # 🚀 Tech Stack
+
 | Technology                      | Purpose                   |
-| ------------------------------- |---------------------------|
+|---------------------------------|---------------------------|
 | **Java 17+**                    | Programming Language      |
 | **Spring Boot**                 | Backend Framework         |
 | **Spring Data JPA**             | ORM & Database operations |

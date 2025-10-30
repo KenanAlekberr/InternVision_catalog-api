@@ -1,6 +1,5 @@
 package com.example.catalogapi.dto.request.product;
 
-import com.example.catalogapi.enums.AvailabilityStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
